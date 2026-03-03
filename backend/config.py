@@ -5,7 +5,7 @@ All environment variables and application settings are centralized here.
 
 from pydantic_settings import BaseSettings
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, List
 
 
 class Settings(BaseSettings):
@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     # API Settings
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    api_cors_origins: list = ["http://localhost:4200", "http://localhost:3000"]
+    api_cors_origins: List[str] = ["http://localhost:4200", "http://localhost:3000"]
     
     # Timeouts and Limits
     request_timeout: int = 30

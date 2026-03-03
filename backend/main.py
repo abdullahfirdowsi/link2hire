@@ -6,7 +6,8 @@ Defines API routes, middleware, and application lifecycle.
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from backend.config import settings
