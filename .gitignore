@@ -1,3 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+env/
+venv/
+env.bak/
+.venv/
+venv\
+/.venv/
+/.env
+.env.*
+*.env
+*.venv
+
+# Byte-compiled / optimized / DLL files
+*.so
+*.dylib
+*.dll
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Frontend build outputs
+/frontend/dist/
+/frontend/build/
+
+# Credentials and secrets
+/backend/.env
+/backend/.env.*
+/backend/credentials/
+/credentials/
+*.pem
+*.key
+*.crt
+service-account-*.json
+*credentials*.json
+
+# Logs
+*.log
+
+# Pyright / mypy
+.mypy_cache/
+.pyre/
 .env
 .env.local
 .env.*.local
