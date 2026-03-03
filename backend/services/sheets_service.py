@@ -97,7 +97,7 @@ class GoogleSheetsService:
             logger.error(f"Spreadsheet not found: {settings.google_sheets_spreadsheet_id}")
             raise
         except Exception as e:
-            logger.error(f"Google Sheets initialization failed: {str(e)}")
+            logger.exception("Google Sheets initialization failed")
             raise
     
     def _format_roles_text(self, roles: List[JobRole]) -> str:
@@ -131,9 +131,9 @@ class GoogleSheetsService:
         try:
             # Initialize client if not already done
             self._initialize_client()
-            
+
             logger.info(f"Appending job entry to Google Sheets: {job_data.company}")
-            
+
             # Prepare row data
             from datetime import datetime
             row_data = [
@@ -149,16 +149,17 @@ class GoogleSheetsService:
                 job_data.deadline or "Not specified",
                 "No"  # Posted to LinkedIn (default)
             ]
-            
+
             # Append row
             self.worksheet.append_row(row_data)
-            
+
             logger.info("Job entry appended to Google Sheets successfully")
             return True
-        
+
         except Exception as e:
+            # Log and return False instead of raising so callers can continue gracefully
             logger.error(f"Failed to append to Google Sheets: {str(e)}")
-            raise
+            return False
     
     def append_job_entry_sync(self, job_data: ExtractedJobData) -> bool:
         """

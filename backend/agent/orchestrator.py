@@ -290,6 +290,7 @@ class JobProcessingOrchestrator:
                     job_entries.append(job_entry)
             
             # Step 2: Process each job entry
+            sheet_success_count = 0
             for job_entry in job_entries:
                 # Generate LinkedIn post
                 logger.info(f"Generating LinkedIn post for {job_entry.id}")
@@ -307,9 +308,12 @@ class JobProcessingOrchestrator:
                     sheet_result = await self.sheets_service.append_job_entry(job_entry.extracted_data)
                     if sheet_result:
                         job_entry.posted_to_sheets = True
+                        sheet_success_count += 1
                         await self.mongodb_service.update_job_entry(job_entry)
+                    else:
+                        logger.warning(f"Google Sheets append returned False for {job_entry.id}")
                 except Exception as sheet_error:
-                    logger.error(f"Google Sheets append failed: {sheet_error}")
+                    logger.error(f"Google Sheets append failed with exception: {sheet_error}")
                     # Continue even if sheets fails - don't block the workflow
             
             # Step 3: Update conversation state to completed
@@ -320,11 +324,19 @@ class JobProcessingOrchestrator:
             await self.mongodb_service.update_conversation(conversation)
             
             # Step 4: Return success response
-            logger.info(f"Job processing completed successfully: {len(job_entries)} entries created")
-            
+            logger.info(f"Job processing completed successfully: {len(job_entries)} entries created; {sheet_success_count} appended to Google Sheets")
+
+            # Build user-facing message that accurately reflects sheets outcome
+            if sheet_success_count == len(job_entries):
+                sheets_message = "Data saved to database and Google Sheets."
+            elif sheet_success_count == 0:
+                sheets_message = "Data saved to database. Failed to append to Google Sheets."
+            else:
+                sheets_message = f"Data saved to database. Appended {sheet_success_count}/{len(job_entries)} entries to Google Sheets."
+
             return ProcessingResponse(
                 success=True,
-                message=f"✅ Successfully processed {len(job_entries)} job {'entry' if len(job_entries) == 1 else 'entries'}! Data saved to database and Google Sheets.",
+                message=f"✅ Successfully processed {len(job_entries)} job {'entry' if len(job_entries) == 1 else 'entries'}! {sheets_message}",
                 conversation_id=conversation_id,
                 state=ConversationState.COMPLETED,
                 requires_clarification=False,

@@ -359,6 +359,37 @@ if settings.debug:
         return result.dict()
 
 
+@app.post("/debug/sheets-test")
+async def debug_sheets_test():
+    """Attempt to append a test row to Google Sheets and return detailed result or traceback."""
+    import traceback
+    from backend.services.sheets_service import get_sheets_service
+    from backend.models.job_model import ExtractedJobData, JobRole, WorkMode
+
+    sheets = get_sheets_service()
+
+    # Build minimal test job data
+    test_data = ExtractedJobData(
+        company="DEBUG_Corp",
+        roles=[JobRole(title="Debug Role", description="Automated test")],
+        location="Remote",
+        work_mode=WorkMode.REMOTE,
+        experience="0-1 years",
+        eligibility="Open",
+        salary="Not specified",
+        apply_link="https://example.com/apply",
+        deadline=None
+    )
+
+    try:
+        result = await sheets.append_job_entry(test_data)
+        return {"ok": result}
+    except Exception as e:
+        tb = traceback.format_exc()
+        logger.error(f"Sheets test failed: {str(e)}\n{tb}")
+        raise HTTPException(status_code=500, detail={"error": str(e), "trace": tb})
+
+
 # Run with: uvicorn backend.main:app --reload
 if __name__ == "__main__":
     import uvicorn
