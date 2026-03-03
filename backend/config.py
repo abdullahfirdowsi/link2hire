@@ -5,7 +5,8 @@ All environment variables and application settings are centralized here.
 
 from pydantic_settings import BaseSettings
 from functools import lru_cache
-from typing import Optional, List
+from typing import Optional, List, Union
+from pydantic import field_validator
 
 
 class Settings(BaseSettings):
@@ -43,7 +44,17 @@ class Settings(BaseSettings):
     # API Settings
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    api_cors_origins: List[str] = ["http://localhost:4200", "http://localhost:3000"]
+    api_cors_origins: Union[List[str], str] = ["http://localhost:4200", "http://localhost:3000"]
+
+    @field_validator("api_cors_origins", mode="before")
+    def _parse_api_cors_origins(cls, v):
+        """Allow comma-separated string in .env for CORS origins.
+
+        Example: API_CORS_ORIGINS=http://localhost:4200,http://localhost:3000
+        """
+        if isinstance(v, str):
+            return [part.strip() for part in v.split(",") if part.strip()]
+        return v
     
     # Timeouts and Limits
     request_timeout: int = 30
