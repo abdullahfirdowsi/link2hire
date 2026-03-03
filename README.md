@@ -507,5 +507,3 @@ For issues and questions, open a GitHub issue or contact the maintainers.
 ---
 
 **Built with ❤️ for AI-powered job processing**
-#   l i n k 2 h i r e  
- 

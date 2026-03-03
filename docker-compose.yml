@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # MongoDB
+  mongodb:
+    image: mongo:7
+    container_name: link2hire-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password123
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - link2hire
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: link2hire-backend
+    environment:
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+      - AZURE_OPENAI_DEPLOYMENT_NAME=${AZURE_OPENAI_DEPLOYMENT_NAME}
+      - MONGODB_CONNECTION_STRING=mongodb://root:password123@mongodb:27017/admin
+      - GOOGLE_SHEETS_CREDENTIALS_PATH=/app/credentials/sheets-credentials.json
+      - GOOGLE_SHEETS_SPREADSHEET_ID=${GOOGLE_SHEETS_SPREADSHEET_ID}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongodb
+    volumes:
+      - ./backend:/app
+      - ./backend/credentials:/app/credentials
+    networks:
+      - link2hire
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: link2hire-frontend
+    ports:
+      - "4200:4200"
+    environment:
+      - API_URL=http://backend:8000
+    depends_on:
+      - backend
+    networks:
+      - link2hire
+
+volumes:
+  mongodb_data:
+
+networks:
+  link2hire:
+    driver: bridge
