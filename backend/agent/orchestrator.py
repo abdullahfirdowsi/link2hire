@@ -300,6 +300,7 @@ class JobProcessingOrchestrator:
                 # Save to MongoDB
                 logger.info(f"Saving job entry to MongoDB: {job_entry.id}")
                 saved_entry = await self.mongodb_service.save_job_entry(job_entry)
+                job_entry.id = saved_entry.get("_id")
                 job_entry_ids.append(saved_entry["_id"])
                 
                 # Append to Google Sheets
@@ -315,6 +316,21 @@ class JobProcessingOrchestrator:
                 except Exception as sheet_error:
                     logger.error(f"Google Sheets append failed with exception: {sheet_error}")
                     # Continue even if sheets fails - don't block the workflow
+
+                # Attempt to post to LinkedIn if configured
+                try:
+                    if self.linkedin_service and self.linkedin_service.is_configured():
+                        logger.info(f"Attempting LinkedIn post for {job_entry.id}")
+                        posted = await self.linkedin_service.post_job(job_entry, linkedin_post)
+                        if posted:
+                            job_entry.posted_to_linkedin = True
+                            await self.mongodb_service.update_job_entry(job_entry)
+                        else:
+                            logger.warning(f"LinkedIn post failed for {job_entry.id}")
+                    else:
+                        logger.info("LinkedIn service not configured; skipping posting")
+                except Exception as ln_error:
+                    logger.error(f"LinkedIn posting failed for {job_entry.id}: {ln_error}")
             
             # Step 3: Update conversation state to completed
             conversation = await self.mongodb_service.get_conversation(conversation_id)

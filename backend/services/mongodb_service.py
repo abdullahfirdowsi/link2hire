@@ -7,6 +7,7 @@ import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from bson import ObjectId
 from pymongo.errors import DuplicateKeyError, PyMongoError
 
 from backend.config import settings
@@ -248,7 +249,8 @@ class MongoDBService:
         """
         try:
             collection = self.db[settings.mongodb_collection_jobs]
-            doc = await collection.find_one({"_id": job_id})
+            query = {"_id": ObjectId(job_id)} if ObjectId.is_valid(job_id) else {"_id": job_id}
+            doc = await collection.find_one(query)
             
             if doc:
                 doc["_id"] = str(doc["_id"])
@@ -276,9 +278,10 @@ class MongoDBService:
             
             job_dict = job_entry.dict(by_alias=True, exclude={"id"})
             job_dict["updated_at"] = datetime.utcnow()
+            query = {"_id": ObjectId(job_entry.id)} if job_entry.id and ObjectId.is_valid(job_entry.id) else {"_id": job_entry.id}
             
             result = await collection.update_one(
-                {"_id": job_entry.id},
+                query,
                 {"$set": job_dict}
             )
             

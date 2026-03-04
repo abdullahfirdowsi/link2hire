@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     linkedin_client_id: Optional[str] = None
     linkedin_client_secret: Optional[str] = None
     linkedin_redirect_uri: Optional[str] = None
+    linkedin_access_token: Optional[str] = None
+    linkedin_author_urn: Optional[str] = None
     
     # API Settings
     api_host: str = "0.0.0.0"
@@ -61,7 +63,7 @@ class Settings(BaseSettings):
     max_retries: int = 3
     
     class Config:
-        env_file = ".env"
+        env_file = ("backend/.env", ".env")
         env_file_encoding = "utf-8"
         case_sensitive = False
 
