@@ -1,6 +1,7 @@
 """
 LinkedIn post formatter agent.
-Generates engaging LinkedIn post text from structured job data.
+Generates professional LinkedIn post text from structured job data.
+Uses intelligent job classification to select appropriate tone.
 """
 
 import logging
@@ -9,6 +10,8 @@ from openai import AzureOpenAI
 
 from backend.config import settings
 from backend.models.job_model import ExtractedJobData, LinkedInPost, JobRole
+from backend.agent.classifier import get_job_classifier, JobCategory
+from backend.agent.professional_styles import ProfessionalPostStyles
 
 
 logger = logging.getLogger(__name__)
@@ -21,13 +24,14 @@ class FormatterAgent:
     """
     
     def __init__(self):
-        """Initialize Azure OpenAI client for post generation."""
+        """Initialize formatter with classifier for intelligent tone selection."""
         self.client = AzureOpenAI(
             api_key=settings.azure_openai_api_key,
             api_version=settings.azure_openai_api_version,
             azure_endpoint=settings.azure_openai_endpoint
         )
         self.deployment_name = settings.azure_openai_deployment_name
+        self.classifier = get_job_classifier()
     
     def _build_system_prompt(self) -> str:
         """Build system prompt for LinkedIn post generation."""
@@ -78,38 +82,41 @@ Application Link: {job_data.apply_link}
 
 Generate an engaging LinkedIn post that will attract qualified candidates."""
 
-    async def format_linkedin_post(self, job_data: ExtractedJobData) -> LinkedInPost:
+    async def format_linkedin_post(self, job_data: ExtractedJobData, raw_job_text: str = "") -> LinkedInPost:
         """
-        Generate LinkedIn post from job data.
+        Generate professional LinkedIn post from job data.
+        Intelligently classifies job type and selects appropriate tone.
         
         Args:
             job_data: Structured job data
+            raw_job_text: Original job posting text for classification
             
         Returns:
             LinkedInPost: Generated post content with hashtags
             
         Raises:
-            Exception: For API or generation errors
+            Exception: For classification or generation errors
         """
         try:
             logger.info(f"Generating LinkedIn post for {job_data.company}")
             
-            response = self.client.chat.completions.create(
-                model=self.deployment_name,
-                messages=[
-                    {"role": "system", "content": self._build_system_prompt()},
-                    {"role": "user", "content": self._build_user_prompt(job_data)}
-                ],
-                temperature=0.7,  # Slightly higher for creative content
-                max_tokens=1000
-            )
+            # Classify job to determine tone
+            if raw_job_text:
+                category = await self.classifier.classify_job(raw_job_text)
+            else:
+                # Fallback heuristic classification
+                category = self.classifier.heuristic_classify(job_data.company)
             
-            post_text = response.choices[0].message.content.strip()
+            logger.info(f"Job classified as: {category.value}")
+            
+            # Select appropriate style based on category
+            style_template = ProfessionalPostStyles.get_style_for_category(category)
+            post_text = style_template(job_data)
+            
+            logger.info(f"LinkedIn post generated using {category.value} tone")
             
             # Extract hashtags from the generated post
             hashtags = self._extract_hashtags(post_text)
-            
-            logger.info("LinkedIn post generated successfully")
             
             return LinkedInPost(
                 post_text=post_text,
@@ -118,7 +125,8 @@ Generate an engaging LinkedIn post that will attract qualified candidates."""
         
         except Exception as e:
             logger.error(f"LinkedIn post generation failed: {str(e)}")
-            raise
+            # Fallback to professional informational style
+            return self.generate_fallback_post(job_data)
     
     def _extract_hashtags(self, post_text: str) -> List[str]:
         """
@@ -141,43 +149,54 @@ Generate an engaging LinkedIn post that will attract qualified candidates."""
         import asyncio
         return asyncio.run(self.format_linkedin_post(job_data))
     
+    def format_with_category(self, job_data: ExtractedJobData, category: JobCategory) -> LinkedInPost:
+        """
+        Generate LinkedIn post using a specific job category tone.
+        Useful for manual tone selection/overrides.
+        
+        Args:
+            job_data: Structured job data
+            category: JobCategory for tone selection
+            
+        Returns:
+            LinkedInPost: Formatted post using specified category tone
+        """
+        try:
+            # Get the specific category template
+            style_template = ProfessionalPostStyles.get_style_for_category(category)
+            post_text = style_template(job_data)
+            hashtags = self._extract_hashtags(post_text)
+            
+            logger.info(f"LinkedIn post generated using {category.value} tone")
+            
+            return LinkedInPost(
+                post_text=post_text,
+                hashtags=hashtags
+            )
+        except Exception as e:
+            logger.error(f"Failed to generate post with category {category.value}: {str(e)}")
+            raise
+    
     def generate_fallback_post(self, job_data: ExtractedJobData) -> LinkedInPost:
         """
-        Generate a simple fallback post without AI.
-        Used when AI generation fails.
+        Generate a fallback post using professional informational style.
+        Used when classification or generation fails.
         
         Args:
             job_data: Structured job data
             
         Returns:
-            LinkedInPost: Basic formatted post
+            LinkedInPost: Professional fallback post
         """
-        roles_text = " and ".join([role.title for role in job_data.roles])
+        # Use informational style as safe default
+        post_text = ProfessionalPostStyles.style_informational(job_data)
+        hashtags = self._extract_hashtags(post_text)
         
-        post_text = f"""🚀 Exciting Opportunity at {job_data.company}!
-
-We're looking for talented individuals to join as {roles_text}.
-
-📍 Location: {job_data.location}
-💼 Work Mode: {job_data.work_mode.value}
-🎯 Experience: {job_data.experience}
-✅ Eligibility: {job_data.eligibility}
-"""
-        
-        if job_data.salary:
-            post_text += f"💰 Compensation: {job_data.salary}\n"
-        
-        if job_data.deadline:
-            post_text += f"⏰ Deadline: {job_data.deadline}\n"
-        
-        post_text += f"""
-🔗 Apply now: {job_data.apply_link}
-
-#hiring #jobopportunity #careers #techJobs"""
+        logger.info("Fallback LinkedIn post generated using informational style")
         
         return LinkedInPost(
             post_text=post_text,
-            hashtags=["hiring", "jobopportunity", "careers", "techJobs"]
+            hashtags=hashtags
         )
 
 

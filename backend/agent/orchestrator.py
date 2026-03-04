@@ -151,7 +151,8 @@ class JobProcessingOrchestrator:
             return await self._execute_job_processing(
                 conversation_id,
                 extracted_data,
-                ClarificationChoice.COMBINED  # Default to combined if only one role
+                ClarificationChoice.COMBINED,  # Default to combined if only one role
+                raw_job_text  # Pass raw text for job classification
             )
         
         except Exception as e:
@@ -222,7 +223,8 @@ class JobProcessingOrchestrator:
             return await self._execute_job_processing(
                 conversation_id,
                 conversation.extracted_data,
-                choice
+                choice,
+                conversation.raw_input  # Pass raw text for job classification
             )
         
         except Exception as e:
@@ -239,7 +241,8 @@ class JobProcessingOrchestrator:
         self,
         conversation_id: str,
         extracted_data: ExtractedJobData,
-        user_choice: ClarificationChoice
+        user_choice: ClarificationChoice,
+        raw_job_text: str = ""
     ) -> ProcessingResponse:
         """
         Execute the complete job processing workflow.
@@ -292,9 +295,12 @@ class JobProcessingOrchestrator:
             # Step 2: Process each job entry
             sheet_success_count = 0
             for job_entry in job_entries:
-                # Generate LinkedIn post
+                # Generate LinkedIn post with job classification for intelligent tone
                 logger.info(f"Generating LinkedIn post for {job_entry.id}")
-                linkedin_post = await self.formatter.format_linkedin_post(job_entry.extracted_data)
+                linkedin_post = await self.formatter.format_linkedin_post(
+                    job_entry.extracted_data,
+                    raw_job_text  # Pass raw text for job classification
+                )
                 job_entry.linkedin_post = linkedin_post
                 
                 # Save to MongoDB
