@@ -71,17 +71,63 @@ class GoogleSheetsService:
                 # Fall back to environment variable (Azure production)
                 logger.info("Loading credentials from GOOGLE_SHEETS_CREDENTIALS_JSON environment variable...")
                 creds_json = os.getenv("GOOGLE_SHEETS_CREDENTIALS_JSON")
-                if not creds_json:
-                    raise ValueError(
-                        "Google Sheets credentials not found. Set GOOGLE_SHEETS_CREDENTIALS_JSON environment variable "
-                        "with the full JSON content of your service account credentials."
-                    )
                 
-                creds_dict = json.loads(creds_json)
-                credentials = Credentials.from_service_account_info(
-                    creds_dict,
-                    scopes=self.SCOPES
-                )
+                # If full JSON not available, try to build from individual env vars (fallback method)
+                if not creds_json:
+                    logger.info("GOOGLE_SHEETS_CREDENTIALS_JSON not found, trying individual environment variables...")
+                    try:
+                        creds_dict = {
+                            "type": os.getenv("GSHEETS_TYPE", "service_account"),
+                            "project_id": os.getenv("GSHEETS_PROJECT_ID"),
+                            "private_key_id": os.getenv("GSHEETS_PRIVATE_KEY_ID"),
+                            "private_key": os.getenv("GSHEETS_PRIVATE_KEY", "").replace('\\n', '\n'),
+                            "client_email": os.getenv("GSHEETS_CLIENT_EMAIL"),
+                            "client_id": os.getenv("GSHEETS_CLIENT_ID"),
+                            "auth_uri": os.getenv("GSHEETS_AUTH_URI", "https://accounts.google.com/o/oauth2/auth"),
+                            "token_uri": os.getenv("GSHEETS_TOKEN_URI", "https://oauth2.googleapis.com/token"),
+                            "auth_provider_x509_cert_url": os.getenv("GSHEETS_AUTH_PROVIDER_CERT_URL", "https://www.googleapis.com/oauth2/v1/certs"),
+                            "client_x509_cert_url": os.getenv("GSHEETS_CLIENT_CERT_URL"),
+                            "universe_domain": os.getenv("GSHEETS_UNIVERSE_DOMAIN", "googleapis.com")
+                        }
+                        # Remove None values
+                        creds_dict = {k: v for k, v in creds_dict.items() if v is not None}
+                        
+                        if not all(k in creds_dict for k in ["project_id", "client_email", "private_key"]):
+                            raise ValueError("Missing required individual credential environment variables")
+                        
+                        logger.info("Loaded credentials from individual environment variables")
+                        credentials = Credentials.from_service_account_info(
+                            creds_dict,
+                            scopes=self.SCOPES
+                        )
+                    except (KeyError, ValueError) as e:
+                        raise ValueError(
+                            "Google Sheets credentials not found. Set either:\n"
+                            "1. GOOGLE_SHEETS_CREDENTIALS_JSON with full JSON content, OR\n"
+                            f"2. Individual env vars (GSHEETS_*): {str(e)}"
+                        )
+                else:
+                    # Parse the full JSON credential
+                    creds_json = creds_json.strip()
+                    logger.debug(f"Credentials JSON length: {len(creds_json)}, first 100 chars: {creds_json[:100]}")
+                    
+                    # Try to parse JSON - if it fails, try to repair common escaping issues
+                    try:
+                        creds_dict = json.loads(creds_json)
+                    except json.JSONDecodeError as json_err:
+                        logger.error(f"JSON parsing error: {json_err}")
+                        # Try removing possible BOM or extra characters
+                        if creds_json.startswith('ï»¿'):  # UTF-8 BOM
+                            creds_json = creds_json[3:]
+                        elif not creds_json.startswith('{'):
+                            logger.error(f"Invalid JSON start character: {creds_json[0] if creds_json else 'empty'}")
+                            raise
+                        creds_dict = json.loads(creds_json)
+                    
+                    credentials = Credentials.from_service_account_info(
+                        creds_dict,
+                        scopes=self.SCOPES
+                    )
             
             # Create gspread client
             self.client = gspread.authorize(credentials)
