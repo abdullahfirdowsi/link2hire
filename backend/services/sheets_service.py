@@ -71,10 +71,34 @@ class GoogleSheetsService:
                 # Fall back to environment variable (Azure production)
                 logger.info("Loading credentials from GOOGLE_SHEETS_CREDENTIALS_JSON environment variable...")
                 creds_json = os.getenv("GOOGLE_SHEETS_CREDENTIALS_JSON")
+                credentials = None
                 
-                # If full JSON not available, try to build from individual env vars (fallback method)
-                if not creds_json:
-                    logger.info("GOOGLE_SHEETS_CREDENTIALS_JSON not found, trying individual environment variables...")
+                # Try to parse full JSON if available
+                if creds_json:
+                    creds_json = creds_json.strip()
+                    logger.debug(f"Credentials JSON length: {len(creds_json)}, first 100 chars: {creds_json[:100]}")
+                    
+                    try:
+                        # Try to parse JSON - if it fails, try to repair common escaping issues
+                        if creds_json.startswith('ï»¿'):  # UTF-8 BOM
+                            creds_json = creds_json[3:]
+                        elif not creds_json.startswith('{'):
+                            logger.error(f"Invalid JSON start character: {creds_json[0] if creds_json else 'empty'}")
+                            raise json.JSONDecodeError("Invalid start character", creds_json, 0)
+                        
+                        creds_dict = json.loads(creds_json)
+                        credentials = Credentials.from_service_account_info(
+                            creds_dict,
+                            scopes=self.SCOPES
+                        )
+                        logger.info("Successfully loaded credentials from GOOGLE_SHEETS_CREDENTIALS_JSON")
+                    except json.JSONDecodeError as json_err:
+                        logger.error(f"Failed to parse GOOGLE_SHEETS_CREDENTIALS_JSON: {json_err}")
+                        # Will fall through to try individual env vars
+                
+                # If JSON parsing failed or not available, try individual env vars (fallback method)
+                if credentials is None:
+                    logger.info("GOOGLE_SHEETS_CREDENTIALS_JSON not found or invalid, trying individual environment variables...")
                     try:
                         creds_dict = {
                             "type": os.getenv("GSHEETS_TYPE", "service_account"),
@@ -95,7 +119,7 @@ class GoogleSheetsService:
                         if not all(k in creds_dict for k in ["project_id", "client_email", "private_key"]):
                             raise ValueError("Missing required individual credential environment variables")
                         
-                        logger.info("Loaded credentials from individual environment variables")
+                        logger.info("Successfully loaded credentials from individual GSHEETS_* environment variables")
                         credentials = Credentials.from_service_account_info(
                             creds_dict,
                             scopes=self.SCOPES
@@ -103,31 +127,9 @@ class GoogleSheetsService:
                     except (KeyError, ValueError) as e:
                         raise ValueError(
                             "Google Sheets credentials not found. Set either:\n"
-                            "1. GOOGLE_SHEETS_CREDENTIALS_JSON with full JSON content, OR\n"
+                            "1. GOOGLE_SHEETS_CREDENTIALS_JSON with valid JSON content, OR\n"
                             f"2. Individual env vars (GSHEETS_*): {str(e)}"
                         )
-                else:
-                    # Parse the full JSON credential
-                    creds_json = creds_json.strip()
-                    logger.debug(f"Credentials JSON length: {len(creds_json)}, first 100 chars: {creds_json[:100]}")
-                    
-                    # Try to parse JSON - if it fails, try to repair common escaping issues
-                    try:
-                        creds_dict = json.loads(creds_json)
-                    except json.JSONDecodeError as json_err:
-                        logger.error(f"JSON parsing error: {json_err}")
-                        # Try removing possible BOM or extra characters
-                        if creds_json.startswith('ï»¿'):  # UTF-8 BOM
-                            creds_json = creds_json[3:]
-                        elif not creds_json.startswith('{'):
-                            logger.error(f"Invalid JSON start character: {creds_json[0] if creds_json else 'empty'}")
-                            raise
-                        creds_dict = json.loads(creds_json)
-                    
-                    credentials = Credentials.from_service_account_info(
-                        creds_dict,
-                        scopes=self.SCOPES
-                    )
             
             # Create gspread client
             self.client = gspread.authorize(credentials)
