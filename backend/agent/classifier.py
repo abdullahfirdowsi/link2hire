@@ -32,13 +32,22 @@ class JobClassifier:
     """
     
     def __init__(self):
-        """Initialize Azure OpenAI client for job classification."""
-        self.client = AzureOpenAI(
-            api_key=settings.azure_openai_api_key,
-            api_version=settings.azure_openai_api_version,
-            azure_endpoint=settings.azure_openai_endpoint
-        )
+        """Initialize job classifier (lazy load Azure OpenAI client)."""
+        self.client = None  # Lazy initialization
         self.deployment_name = settings.azure_openai_deployment_name
+    
+    def _ensure_client(self):
+        """Lazily initialize Azure OpenAI client only when needed."""
+        if self.client is None:
+            try:
+                self.client = AzureOpenAI(
+                    api_key=settings.azure_openai_api_key,
+                    api_version=settings.azure_openai_api_version,
+                    azure_endpoint=settings.azure_openai_endpoint
+                )
+            except Exception as e:
+                logger.warning(f"Failed to initialize Azure OpenAI client: {e}")
+                self.client = None  # Keep as None so heuristic fallback will be used
     
     def _build_classification_prompt(self) -> str:
         """Build system prompt for job classification."""
@@ -85,6 +94,13 @@ Return only the category name."""
             JobCategory: Classified job category
         """
         try:
+            self._ensure_client()
+            
+            # If client initialization failed, use heuristic fallback
+            if self.client is None:
+                logger.info("Using heuristic classification (Azure OpenAI unavailable)")
+                return self.heuristic_classify(raw_job_text)
+            
             logger.info("Classifying job posting...")
             
             response = self.client.chat.completions.create(
@@ -105,12 +121,12 @@ Return only the category name."""
                 logger.info(f"Job classified as: {category.value}")
                 return category
             except ValueError:
-                logger.warning(f"Unknown category returned: {category_text}, defaulting to unknown")
-                return JobCategory.UNKNOWN
+                logger.warning(f"Unknown category returned: {category_text}, defaulting to heuristic")
+                return self.heuristic_classify(raw_job_text)
         
         except Exception as e:
-            logger.error(f"Job classification failed: {str(e)}")
-            return JobCategory.UNKNOWN
+            logger.error(f"Job classification failed: {str(e)}, using heuristic")
+            return self.heuristic_classify(raw_job_text)
     
     def classify_job_sync(self, raw_job_text: str) -> JobCategory:
         """Synchronous version of classify_job."""

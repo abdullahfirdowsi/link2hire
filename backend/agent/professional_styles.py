@@ -1,7 +1,7 @@
 """
 Professional LinkedIn Post Styles
 Clean, informational tone that builds trust with LinkedIn audience
-Tone-based templates instead of viral-optimized formats
+Tone-based templates with visual hierarchy and emoji indicators
 """
 
 from typing import List
@@ -16,23 +16,23 @@ class ProfessionalPostStyles:
     def style_informational(job_data: ExtractedJobData) -> str:
         """
         Informational Style - Used for internships
-        Clean, fact-based format with minimal marketing language
+        Clean, fact-based format with visual hierarchy
         """
         roles_text = " / ".join([role.title for role in job_data.roles])
         
-        post = f"""📌 {roles_text}
+        post = f"""🚀 {roles_text}
 
 Company: {job_data.company}
-Location: {job_data.location}
-Work Mode: {job_data.work_mode.value}
-Eligibility: {job_data.eligibility}
-"""
+📍 Location: {job_data.location}
+💼 Work Mode: {job_data.work_mode.value}
+🎓 Eligibility: {job_data.eligibility}"""
         
         if job_data.salary:
-            post += f"Compensation: {job_data.salary}\n"
+            post += f"\n💰 Compensation: {job_data.salary}"
         
         post += f"""
-Apply: {job_data.apply_link}
+
+{job_data.apply_link}
 
 Follow Cheran Kanth for daily job updates.
 
@@ -48,18 +48,18 @@ Follow Cheran Kanth for daily job updates.
         """
         roles_text = " / ".join([role.title for role in job_data.roles])
         
-        post = f"""Fresher Hiring: {job_data.company}
+        post = f"""⚡ Fresher Hiring: {job_data.company}
 
 Role: {roles_text}
-Location: {job_data.location}
-Eligibility: {job_data.eligibility}
-"""
+📍 Location: {job_data.location}
+🎓 Eligibility: {job_data.eligibility}"""
         
         if job_data.salary:
-            post += f"Salary: {job_data.salary}\n"
+            post += f"\n💰 Salary: {job_data.salary}"
         
         post += f"""
-Apply: {job_data.apply_link}
+
+{job_data.apply_link}
 
 Follow for more opportunities.
 
@@ -75,21 +75,22 @@ Follow for more opportunities.
         """
         roles_text = " / ".join([role.title for role in job_data.roles])
         
-        post = f"""Remote Opportunity: {job_data.company}
+        post = f"""🌍 Remote Opportunity: {job_data.company}
 
 Role: {roles_text}
-Location: {job_data.location} (Remote)
-Work Mode: {job_data.work_mode.value}
-Eligibility: {job_data.eligibility}
-"""
+📍 Location: {job_data.location} (Remote)
+💼 Work Mode: {job_data.work_mode.value}
+🎓 Eligibility: {job_data.eligibility}"""
         
         if job_data.salary:
-            post += f"Compensation: {job_data.salary}\n"
+            post += f"\n💰 Compensation: {job_data.salary}"
         
         post += f"""
-Apply: {job_data.apply_link}
 
 Work flexibly from anywhere.
+
+{job_data.apply_link}
+
 Follow for daily updates.
 
 #remotework #techJobs #fresherjobs"""
@@ -104,20 +105,20 @@ Follow for daily updates.
         """
         roles_text = " / ".join([role.title for role in job_data.roles])
         
-        post = f"""Mass Hiring: {job_data.company}
+        post = f"""🔥 Mass Hiring: {job_data.company}
 
 Multiple positions open
 
 Roles: {roles_text}
-Location: {job_data.location}
-Eligibility: {job_data.eligibility}
-"""
+📍 Location: {job_data.location}
+🎓 Eligibility: {job_data.eligibility}"""
         
         if job_data.salary:
-            post += f"Compensation: {job_data.salary}\n"
+            post += f"\n💰 Compensation: {job_data.salary}"
         
         post += f"""
-Apply: {job_data.apply_link}
+
+{job_data.apply_link}
 
 Follow Cheran Kanth for daily job updates.
 
@@ -133,21 +134,21 @@ Follow Cheran Kanth for daily job updates.
         """
         roles_text = " / ".join([role.title for role in job_data.roles])
         
-        post = f"""Growth Opportunity: {job_data.company}
+        post = f"""💡 Growth Opportunity: {job_data.company}
 
 Role: {roles_text}
-Location: {job_data.location}
-Work Mode: {job_data.work_mode.value}
-Eligibility: {job_data.eligibility}
+📍 Location: {job_data.location}
+💼 Work Mode: {job_data.work_mode.value}
+🎓 Eligibility: {job_data.eligibility}
 
-Impact-driven role with strong learning potential.
-"""
+Impact-driven role with strong learning potential."""
         
         if job_data.salary:
-            post += f"Compensation: {job_data.salary}\n"
+            post += f"\n💰 Compensation: {job_data.salary}"
         
         post += f"""
-Apply: {job_data.apply_link}
+
+{job_data.apply_link}
 
 Follow for opportunities in growth-stage companies.
 
@@ -163,21 +164,21 @@ Follow for opportunities in growth-stage companies.
         """
         roles_text = " / ".join([role.title for role in job_data.roles])
         
-        post = f"""Paid Internship: {job_data.company}
+        post = f"""💰 Paid Internship: {job_data.company}
 
 Role: {roles_text}
-Location: {job_data.location}
-Work Mode: {job_data.work_mode.value}
-Eligibility: {job_data.eligibility}
-"""
+📍 Location: {job_data.location}
+💼 Work Mode: {job_data.work_mode.value}
+🎓 Eligibility: {job_data.eligibility}"""
         
         if job_data.salary:
-            post += f"Stipend: {job_data.salary}\n"
+            post += f"\nStipend: {job_data.salary}"
         
         post += f"""
+
 Earn while you learn.
 
-Apply: {job_data.apply_link}
+{job_data.apply_link}
 
 Follow for paid internship opportunities.
 
