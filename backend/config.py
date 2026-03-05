@@ -46,7 +46,12 @@ class Settings(BaseSettings):
     # API Settings
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    api_cors_origins: Union[List[str], str] = ["http://localhost:4200", "http://localhost:3000"]
+    api_cors_origins: Union[List[str], str] = [
+        "http://localhost:4200",
+        "http://localhost:3000",
+        "https://thankful-glacier-0ccc68500.1.azurestaticapps.net",
+        "https://link2hire.viztalk.site"
+    ]
 
     @field_validator("api_cors_origins", mode="before")
     def _parse_api_cors_origins(cls, v):
