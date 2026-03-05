@@ -8,6 +8,8 @@ from typing import Optional, List, Dict, Any
 import gspread
 from google.oauth2.service_account import Credentials
 from gspread.exceptions import SpreadsheetNotFound, WorksheetNotFound
+import os
+import json
 
 from backend.config import settings
 from backend.models.job_model import ExtractedJobData, JobRole
@@ -58,11 +60,28 @@ class GoogleSheetsService:
         try:
             logger.info("Initializing Google Sheets client...")
             
-            # Load service account credentials
-            credentials = Credentials.from_service_account_file(
-                settings.google_sheets_credentials_path,
-                scopes=self.SCOPES
-            )
+            # Try loading credentials from file first (local development)
+            if os.path.exists(settings.google_sheets_credentials_path):
+                logger.info("Loading credentials from file...")
+                credentials = Credentials.from_service_account_file(
+                    settings.google_sheets_credentials_path,
+                    scopes=self.SCOPES
+                )
+            else:
+                # Fall back to environment variable (Azure production)
+                logger.info("Loading credentials from GOOGLE_SHEETS_CREDENTIALS_JSON environment variable...")
+                creds_json = os.getenv("GOOGLE_SHEETS_CREDENTIALS_JSON")
+                if not creds_json:
+                    raise ValueError(
+                        "Google Sheets credentials not found. Set GOOGLE_SHEETS_CREDENTIALS_JSON environment variable "
+                        "with the full JSON content of your service account credentials."
+                    )
+                
+                creds_dict = json.loads(creds_json)
+                credentials = Credentials.from_service_account_info(
+                    creds_dict,
+                    scopes=self.SCOPES
+                )
             
             # Create gspread client
             self.client = gspread.authorize(credentials)
@@ -90,8 +109,14 @@ class GoogleSheetsService:
             self._initialized = True
             logger.info("Google Sheets client initialized successfully")
         
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             logger.error(f"Credentials file not found: {settings.google_sheets_credentials_path}")
+            raise
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse GOOGLE_SHEETS_CREDENTIALS_JSON: {e}")
+            raise
+        except ValueError as e:
+            logger.error(str(e))
             raise
         except SpreadsheetNotFound:
             logger.error(f"Spreadsheet not found: {settings.google_sheets_spreadsheet_id}")
