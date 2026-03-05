@@ -6,9 +6,6 @@ Appends structured job entries to Google Sheets for tracking.
 import logging
 from typing import Optional, List, Dict, Any
 import gspread
-import json
-import base64
-import os
 from google.oauth2.service_account import Credentials
 from gspread.exceptions import SpreadsheetNotFound, WorksheetNotFound
 
@@ -61,35 +58,11 @@ class GoogleSheetsService:
         try:
             logger.info("Initializing Google Sheets client...")
             
-            # Try to load credentials from file first
-            credentials_path = settings.google_sheets_credentials_path
-            if os.path.exists(credentials_path):
-                logger.info(f"Loading credentials from file: {credentials_path}")
-                credentials = Credentials.from_service_account_file(
-                    credentials_path,
-                    scopes=self.SCOPES
-                )
-            else:
-                # Try to load from base64 environment variable
-                creds_base64 = os.getenv("GOOGLE_SHEETS_CREDENTIALS_BASE64")
-                if creds_base64:
-                    logger.info("Loading credentials from GOOGLE_SHEETS_CREDENTIALS_BASE64 environment variable")
-                    try:
-                        creds_json_str = base64.b64decode(creds_base64).decode('utf-8')
-                        creds_dict = json.loads(creds_json_str)
-                        credentials = Credentials.from_service_account_info(
-                            creds_dict,
-                            scopes=self.SCOPES
-                        )
-                    except Exception as e:
-                        logger.error(f"Failed to decode/parse credentials from environment variable: {e}")
-                        raise
-                else:
-                    logger.error(f"Credentials file not found at {credentials_path} and GOOGLE_SHEETS_CREDENTIALS_BASE64 not set")
-                    # Set initialized to False and raise - will be caught by except block
-                    raise FileNotFoundError(
-                        f"Credentials file not found: {credentials_path} and GOOGLE_SHEETS_CREDENTIALS_BASE64 not set"
-                    )
+            # Load service account credentials
+            credentials = Credentials.from_service_account_file(
+                settings.google_sheets_credentials_path,
+                scopes=self.SCOPES
+            )
             
             # Create gspread client
             self.client = gspread.authorize(credentials)
@@ -117,8 +90,8 @@ class GoogleSheetsService:
             self._initialized = True
             logger.info("Google Sheets client initialized successfully")
         
-        except FileNotFoundError as e:
-            logger.error(f"Credentials not available: {e}")
+        except FileNotFoundError:
+            logger.error(f"Credentials file not found: {settings.google_sheets_credentials_path}")
             raise
         except SpreadsheetNotFound:
             logger.error(f"Spreadsheet not found: {settings.google_sheets_spreadsheet_id}")
