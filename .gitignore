@@ -48,6 +48,14 @@ yarn-error.log*
 /credentials/
 *.pem
 *.key
+
+# Test and debug files
+test_*.py
+AZURE_SETTINGS.txt
+azure-env-config.json
+azure-logs.zip
+azure-logs/
+*.zip
 *.crt
 service-account-*.json
 *credentials*.json
