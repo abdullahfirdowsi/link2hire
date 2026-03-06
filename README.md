@@ -297,7 +297,7 @@ docker-compose up --build
 ### Core Endpoints
 
 #### 1. **Process Job Posting** 
-The main endpoint that starts the workflow.
+The main endpoint that starts the workflow
 
 ```http
 POST /process-job
